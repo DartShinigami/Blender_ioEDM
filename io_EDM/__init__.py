@@ -4,7 +4,7 @@ bl_info = {
   'description': "Importing of .EDM model files",
   'author': "Nicholas Devenish",
   'version': (0,3,0),
-  'blender': (2, 78, 0),
+  'blender': (2, 80, 0),
   'location': "File > Import/Export > .EDM Files",
   'category': 'Import-Export',
 }
@@ -28,8 +28,6 @@ try:
     panels_unregister()
     rna_unregister()
 
-  if __name__ == "__main__":
-    register()
 except ImportError:
   # Allow for now, as we might just want to import the sub-package
   pass

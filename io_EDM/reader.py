@@ -72,7 +72,7 @@ def build_graph(edmFile):
   # Postprocessing: Any transform node with only one child, and that child
   # is a renderNode ONLY, absorbs the rendernode
   def _absorb_rendernode_child(node):
-    # Check for an uncomplicated single child that isn't a parent and is a 
+    # Check for an uncomplicated single child that isn't a parent and is a
     # rendernode, where this node is ONLY a transformnode, and has no other data
     # - some of these might be automatic, but we might have done other tree
     # work between construction and now, so better to be safe
@@ -186,21 +186,21 @@ def read_file(filename, options={}):
   print_edm_graph(edm.transformRoot)
 
   # Set the required blender preferences
-  bpy.context.user_preferences.edit.use_negative_frames = True
+  bpy.context.preferences.edit.use_negative_frames = True
   bpy.context.scene.use_preview_range = True
   bpy.context.scene.frame_preview_start = -100
   bpy.context.scene.frame_preview_end = 100
-  
+
   # Convert the materials. These will be used by objects
   # We need to change the directory as the material searcher
   # currently uses the cwd
   with chdir(os.path.dirname(os.path.abspath(filename))):
     for material in edm.root.materials:
       material.blender_material = create_material(material)
-      if material.blender_material and options.get("shadeless", False):
-        material.blender_material.use_shadeless = True
+      #if material.blender_material and options.get("shadeless", False):
+    #    material.blender_material.use_shadeless = True
 
-  # WIP - use a translation graph to read. For now, just use it to print 
+  # WIP - use a translation graph to read. For now, just use it to print
   # the file structure
   graph = build_graph(edm)
   graph.print_tree()
@@ -245,7 +245,7 @@ def add_position_fcurves(action, keys, transform_left, transform_right):
   "Adds position fcurve data to an animation action"
   maxFrame = max(abs(x.frame) for x in keys) or 1.0
   frameScale = float(FRAME_SCALE) / maxFrame
-  # Create an fcurve for every component  
+  # Create an fcurve for every component
   curves = []
   for i in range(3):
     curve = action.fcurves.new(data_path="location", index=i)
@@ -254,7 +254,7 @@ def add_position_fcurves(action, keys, transform_left, transform_right):
   # Loop over every keyframe in this animation
   for framedata in keys:
     frame = int(frameScale*framedata.frame)
-    
+
     # Calculate the rotation transformation
     newPosMat = transform_left * Matrix.Translation(framedata.value) * transform_right
     newPos = newPosMat.decompose()[0]
@@ -268,8 +268,8 @@ def add_rotation_fcurves(action, keys, transform_left, transform_right):
   "Adds rotation fcurve action to an animation action"
   maxFrame = max(abs(x.frame) for x in keys) or 1.0
   frameScale = float(FRAME_SCALE) / maxFrame
-  
-  # Create an fcurve for every component  
+
+  # Create an fcurve for every component
   curves = []
   for i in range(4):
     curve = action.fcurves.new(data_path="rotation_quaternion", index=i)
@@ -278,7 +278,7 @@ def add_rotation_fcurves(action, keys, transform_left, transform_right):
   # Loop over every keyframe in this animation
   for framedata in keys:
     frame = int(frameScale*framedata.frame)
-    
+
     # Calculate the rotation transformation
     newRot = transform_left * framedata.value * transform_right
 
@@ -325,7 +325,7 @@ def create_arganimation_actions(node):
   # apply it to any object using this node's animation.
 
   #               Geometry is in Blender-space in-file already, and the import
-  #                  procedure over-rotated it into an undefined space. Rotate 
+  #                  procedure over-rotated it into an undefined space. Rotate
   #                                                    back into Blender-space
   #                                                                      |
   #                                Transforms SAVED in blender-space     |
@@ -335,9 +335,9 @@ def create_arganimation_actions(node):
   # Neutralizes rotation into file-space,     |       |     |      |     |
   # keeping other transforms in blender       |       |     |      |     |
   #                               |           |       |     |      |     |
-  dcLoc, dcRot, dcScale = (matrix_to_blender(mat) * aabT * q1m * aabS * RXm).decompose()
+  dcLoc, dcRot, dcScale = (matrix_to_blender(mat) @ aabT @ q1m @ aabS @ RXm).decompose()
   node.zero_transform = dcLoc, dcRot, dcScale
-  
+
   # Split a single node into separate actions based on the argument
   for arg in node.get_all_args():
     # Filter the animation data for this node to just this action
@@ -348,7 +348,7 @@ def create_arganimation_actions(node):
     action = bpy.data.actions.new("AnimationArg{}".format(arg))
     actions.append(action)
     action.argument = arg
-    
+
     # Calculate the pre and post-animation-value transforms
     leftRotation = matQuat * q1
     rightRotation = RX
@@ -367,7 +367,7 @@ def create_arganimation_actions(node):
 
 def get_actions_for_node(node):
   """Accepts a node and gets or creates actions to apply their animations"""
-  
+
   # Don't do this twice
   if hasattr(node, "actions") and node.actions:
     actions = node.actions
@@ -429,23 +429,24 @@ def create_material(material):
 
   # Create material
   mat = bpy.data.materials.new(material.name)
-  mat.specular_shader = "PHONG"
+  # mat.specular_shader = "PHONG"
   # mat.use_shadeless = True
   mat.edm_material = material.material_name
   mat.edm_blending = str(material.blending)
-  mat.use_cast_shadows_only = material.shadows.cast_only
-  mat.use_shadows = material.shadows.receive
-  mat.use_cast_shadows = material.shadows.cast
+# RHC should use shodow_method
+  #mat.use_cast_shadows_only = material.shadows.cast_only
+  # mat.use_shadows = material.shadows.receive
+  # mat.use_cast_shadows = material.shadows.cast
   # Read uniform values
-  mat.diffuse_intensity = material.uniforms.get("diffuseValue", 1.0)
-  mat.specular_intensity = material.uniforms.get("specFactor", mat.specular_intensity)
-  
+  # RHC mat.diffuse_intensity = material.uniforms.get("diffuseValue", 1.0)
+  #mat.specular_intensity = material.uniforms.get("specFactor", mat.specular_intensity)
+
   # Convert power to blender 'hardness'
   # Actual range is (0-100) but basic step is 0.01 so at least this way every
   # distinct edm setting (up to 510) gets a distinct hardness
   specPower = material.uniforms.get("specPower", None)
-  if specPower is not None:
-    mat.specular_hardness = (specPower * 100) + 1
+# RHC if specPower is not None:
+# RHC    mat.specular_hardness = (specPower * 100) + 1
 
   reflection = material.uniforms.get("reflectionValue", 0.0)
   if reflection > 0.0:
@@ -453,10 +454,11 @@ def create_material(material):
     mat.raytrace_mirror.reflect_factor = reflection
     mat.raytrace_mirror.gloss_factor = 1 - material.uniforms.get("reflectionBlurring", 0.0)
 
-  mtex = mat.texture_slots.add()
-  mtex.texture = tex
-  mtex.texture_coords = "UV"
-  mtex.use_map_color_diffuse = True
+# RHC Removed
+#  mtex = mat.texture_slots.add()
+#  mtex.texture = tex
+#  mtex.texture_coords = "UV"
+#  mtex.use_map_color_diffuse = True
 
   return mat
 
@@ -519,8 +521,9 @@ def _create_mesh(vertexData, indexData, vertexFormat):
   if uvIndex:
     # Ensure a UV layer exists before creating faces
     uv_layer = bm.loops.layers.uv.verify()
-    bm.faces.layers.tex.verify()  # currently blender needs both layers.
-  
+    # RHC
+    #bm.faces.layers.tex.verify()  # currently blender needs both layers.
+
   # Generate faces, with texture coordinate information
   for face in [new_indices[i:i+3] for i in range(0, len(new_indices), 3)]:
   # for face, uvs in zip(indexData, uvData):
@@ -562,7 +565,8 @@ def create_object(node):
   ob.edm.is_collision_shell = isinstance(node, ShellNode)
   ob.edm.is_renderable      = isinstance(node, RenderNode)
   ob.edm.damage_argument = -1 if not isinstance(node, RenderNode) else node.damage_argument
-  bpy.context.scene.objects.link(ob)
+  #bpy.context.scene.objects.link(ob)
+  bpy.context.collection.objects.link(ob)
 
   return ob
 

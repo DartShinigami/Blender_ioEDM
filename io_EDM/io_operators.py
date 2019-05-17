@@ -45,10 +45,10 @@ class ImportEDM(Operator, ImportHelper):
     if len(paths) > 1:
       self.report("ERROR", "Importer cannot handle more than one input file currently")
       return "CANCELLED"
-    
+
     # Import the file
     logger.warning("Reading EDM file {}".format(paths[0]))
-    
+
     read_file(paths[0], options={"shadeless": self.shadeless})
     return {'FINISHED'}
 
@@ -91,13 +91,13 @@ def menu_import(self, context):
 def register():
   bpy.utils.register_class(ImportEDM)
   bpy.utils.register_class(ExportEDM)
-  
-  bpy.types.INFO_MT_file_import.append(menu_import)
-  bpy.types.INFO_MT_file_export.append(menu_export)
+
+  bpy.types.TOPBAR_MT_file_import.append(menu_import)
+  bpy.types.TOPBAR_MT_file_export.append(menu_export)
 
 def unregister():
-  bpy.types.INFO_MT_file_export.remove(menu_export)
-  bpy.types.INFO_MT_file_import.remove(menu_import)
+  bpy.types.TOPBAR_MT_file_export.remove(menu_export)
+  bpy.types.TOPBAR_MT_file_import.remove(menu_import)
 
   bpy.utils.unregister_class(ImportEDM)
   bpy.utils.unregister_class(ExportEDM)

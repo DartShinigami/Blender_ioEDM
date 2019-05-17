@@ -16,6 +16,9 @@ def _main(args):
 
   print("Reading", args)
 
+  sys.path.append('./')
+
+
   default, state = addon_utils.check("io_EDM")
   if not state:
     import io_EDM
@@ -25,7 +28,8 @@ def _main(args):
   for obj in bpy.context.scene.objects:
     if obj.type == "CAMERA":
       continue
-    bpy.context.scene.objects.unlink(obj)
+#    bpy.context.scene.objects.unlink(obj)
+    bpy.context.collection.objects.unlink(obj)
 
   # Call the import operator
   bpy.ops.import_mesh.edm(filepath=args[0], shadeless=True)
