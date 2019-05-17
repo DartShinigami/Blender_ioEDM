@@ -134,8 +134,9 @@ def process_node(node):
     # render object, we are probably at the root of a tree of other items.
     # Create an empty object to act as the parent of this sub-tree
     ob = bpy.data.objects.new(type(node.transform).__name__, None)
-    ob.empty_draw_size = 0.1
-    bpy.context.scene.objects.link(ob)
+    ob.empty_display_size = 0.1
+    # RHC
+    bpy.context.collection.objects.link(ob)
     node.blender = ob
 
   # Connect this object to the parent object (if there is one)
@@ -158,13 +159,13 @@ def process_node(node):
     # Apply the transformation base
     apply_node_transform(node.transform, node.blender)
 
-    # Look at the empty scale here, and if it == 1 then make the empty_draw_size smaller
+    # Look at the empty scale here, and if it == 1 then make the empty_display_size smaller
     # This tends to make "dummy" connectors not take a huge volume, whilst leaving smaller
     # connectors used for e.g. button volumes
     if node.blender.type == "EMPTY":
       distFromScale = node.blender.scale - Vector((1,1,1))
       if distFromScale.length < 0.01:
-        node.blender.empty_draw_size = 0.01
+        node.blender.empty_display_size = 0.01
 
   # If this is an LOD node, we will need to adjust the properties of our
   # children
@@ -223,19 +224,19 @@ def create_visibility_actions(visNode):
     curve = action.fcurves.new(data_path="hide_render")
     # Probably need an extra keyframe to specify start visibility
     if ranges[0][0] >= -0.995:
-      curve.keyframe_points.add()
+      curve.keyframe_points.add(count=1)
       curve.keyframe_points[0].co = (-FRAME_SCALE, 1.0)
       curve.keyframe_points[0].interpolation = 'CONSTANT'
     # Create the keyframe data
     for (start, end) in ranges:
       frameStart = int(start*FRAME_SCALE)
       frameEnd = FRAME_SCALE if end > 1.0 else int(end*FRAME_SCALE)
-      curve.keyframe_points.add()
+      curve.keyframe_points.add(count=1)
       key = curve.keyframe_points[-1]
       key.co = (frameStart, 0.0)
       key.interpolation = 'CONSTANT'
       if frameEnd < FRAME_SCALE:
-        curve.keyframe_points.add()
+        curve.keyframe_points.add(count=1)
         key = curve.keyframe_points[-1]
         key.co = (frameEnd, 1.0)
         key.interpolation = 'CONSTANT'
@@ -256,11 +257,11 @@ def add_position_fcurves(action, keys, transform_left, transform_right):
     frame = int(frameScale*framedata.frame)
 
     # Calculate the rotation transformation
-    newPosMat = transform_left * Matrix.Translation(framedata.value) * transform_right
+    newPosMat = transform_left @ Matrix.Translation(framedata.value) @ transform_right
     newPos = newPosMat.decompose()[0]
 
     for curve, component in zip(curves, newPos):
-      curve.keyframe_points.add()
+      curve.keyframe_points.add(count=1)
       curve.keyframe_points[-1].co = (frame, component)
       curve.keyframe_points[-1].interpolation = 'LINEAR'
 
@@ -280,10 +281,10 @@ def add_rotation_fcurves(action, keys, transform_left, transform_right):
     frame = int(frameScale*framedata.frame)
 
     # Calculate the rotation transformation
-    newRot = transform_left * framedata.value * transform_right
+    newRot = transform_left @ framedata.value @ transform_right
 
     for curve, component in zip(curves, newRot):
-      curve.keyframe_points.add()
+      curve.keyframe_points.add(count=1)
       curve.keyframe_points[-1].co = (frame, component)
       curve.keyframe_points[-1].interpolation = 'LINEAR'
 
@@ -350,10 +351,10 @@ def create_arganimation_actions(node):
     action.argument = arg
 
     # Calculate the pre and post-animation-value transforms
-    leftRotation = matQuat * q1
+    leftRotation = matQuat @ q1
     rightRotation = RX
     # At the moment, we don't understand the position transform
-    leftPosition = matrix_to_blender(mat) * aabT
+    leftPosition = matrix_to_blender(mat) @ aabT
     rightPosition = aabS
 
     # Build the f-curves for the action
@@ -448,11 +449,13 @@ def create_material(material):
 # RHC if specPower is not None:
 # RHC    mat.specular_hardness = (specPower * 100) + 1
 
-  reflection = material.uniforms.get("reflectionValue", 0.0)
-  if reflection > 0.0:
-    mat.raytrace_mirror.use = True
-    mat.raytrace_mirror.reflect_factor = reflection
-    mat.raytrace_mirror.gloss_factor = 1 - material.uniforms.get("reflectionBlurring", 0.0)
+#RHC
+#
+#  reflection = material.uniforms.get("reflectionValue", 0.0)
+#  if reflection > 0.0:
+#    mat.raytrace_mirror.use = True
+#    mat.raytrace_mirror.reflect_factor = reflection
+#    mat.raytrace_mirror.gloss_factor = 1 - material.uniforms.get("reflectionBlurring", 0.0)
 
 # RHC Removed
 #  mtex = mat.texture_slots.add()
@@ -466,9 +469,9 @@ def create_material(material):
 def create_connector(connector):
   """Create an empty object representing a connector"""
   ob = bpy.data.objects.new(connector.name, None)
-  ob.empty_draw_type = "CUBE"
+  ob.empty_display_type = "CUBE"
   ob.edm.is_connector = True
-  bpy.context.scene.objects.link(ob)
+  bpy.context.collection.objects.link(ob)
   return ob
 
 def apply_node_transform(node, obj):
@@ -565,7 +568,6 @@ def create_object(node):
   ob.edm.is_collision_shell = isinstance(node, ShellNode)
   ob.edm.is_renderable      = isinstance(node, RenderNode)
   ob.edm.damage_argument = -1 if not isinstance(node, RenderNode) else node.damage_argument
-  #bpy.context.scene.objects.link(ob)
   bpy.context.collection.objects.link(ob)
 
   return ob
@@ -575,5 +577,5 @@ def create_lamp(node):
   data = bpy.data.lamps.new(name=node.name, type='POINT')
   obj = bpy.data.objects.new(name=node.name, object_data=data)
   print("Warning: Light nodes created, but not populated from edm data")
-  bpy.context.scene.objects.link(obj)
+  bpy.context.collection.objects.link(obj)
   return obj
