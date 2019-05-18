@@ -61,7 +61,7 @@ def build_graph(edmFile):
 
   # Connect every renderNode to it's place in the chain
   for node in iterate_all_objects(edmFile):
-    if not hasattr(node, "parent"):
+    if not hasattr(node, "parent") or node.parent == None:
       print("Warning: Node {} has no parent attribute; skipping".format(node))
       continue
     owner = nodeLookup[node.parent]
