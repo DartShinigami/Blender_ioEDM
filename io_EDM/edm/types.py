@@ -324,7 +324,9 @@ class RootNode(BaseNode):
   @classmethod
   def read(cls, stream):
     self = super(RootNode, cls).read(stream)
-    self.unknownA = stream.read_uchar()
+    if self.props["__VERSION__"] == 2:
+        self.unknownA = stream.read_uchar()
+
     self.boundingBoxMin = stream.read_vec3d()
     self.boundingBoxMax = stream.read_vec3d()
     self.unknownB = [stream.read_vec3d() for _ in range(4)]
