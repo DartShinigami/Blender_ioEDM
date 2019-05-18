@@ -188,7 +188,7 @@ to be read, and the components are in this order:
 ::
 
     osg:Quaternion :=
-      float x, y, z, w;
+      double x, y, z, w;
 
 Properties
 ~~~~~~~~~~
