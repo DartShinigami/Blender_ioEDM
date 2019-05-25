@@ -1152,9 +1152,10 @@ instead of parent transforms it explicitly lists a set of bones:
 
     model::SkinNode :=
       model::Node   base;
+      uint          unknownA
       uint          material;
       list<uint>    bones;
-      uint          unknown;
+      uint          unknownB;
 
       VERTEXDATA    vertexData;
       INDEXDATA     indexData;
