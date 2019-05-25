@@ -574,7 +574,7 @@ def create_object(node):
 
 def create_lamp(node):
   """Creates a blender lamp from an edm renderable LampNode"""
-  data = bpy.data.lamps.new(name=node.name, type='POINT')
+  data = bpy.data.lights.new(name=node.name, type='POINT')
   obj = bpy.data.objects.new(name=node.name, object_data=data)
   print("Warning: Light nodes created, but not populated from edm data")
   bpy.context.collection.objects.link(obj)
