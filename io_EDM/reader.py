@@ -123,7 +123,7 @@ def process_node(node):
   if node.render:
     if isinstance(node.render, Connector):
       node.blender = create_connector(node.render)
-    elif isinstance(node.render, (RenderNode, ShellNode)):
+    elif isinstance(node.render, (RenderNode, ShellNode, SkinNode)):
       node.blender = create_object(node.render)
     elif isinstance(node.render, (LightNode)):
       node.blender = create_lamp(node.render)
@@ -145,6 +145,7 @@ def process_node(node):
 
   # Apply any material
   if hasattr(node.render, "material") and node.render != None:
+    print( "node.blender : ", node.blender )
     node.blender.data.materials.append(node.render.material.blender_material)
 
   if node.transform:
@@ -152,7 +153,7 @@ def process_node(node):
     if isinstance(node.transform, AnimatingNode):
       actions = get_actions_for_node(node.transform)
       if len(actions) > 1:
-        print("Warning: More than one action for node not yet integrated")
+        print("Warning: More than one action for node not yet integrated we have", len(actions))
       if actions:
         node.blender.animation_data_create()
         node.blender.animation_data.action = actions[0]
@@ -550,24 +551,40 @@ def _create_mesh(vertexData, indexData, vertexFormat):
 def create_object(node):
   """Accepts an edm renderable and returns a blender object"""
 
-  if not isinstance(node, (RenderNode, ShellNode)):
+  if not isinstance(node, (RenderNode, ShellNode, SkinNode)):
     print("WARNING: Do not understand creating types {} yet".format(type(node)))
     return
 
-  if isinstance(node, RenderNode):
+  if isinstance(node, RenderNode) or isinstance(node, SkinNode):
     vertexFormat = node.material.vertex_format
   elif isinstance(node, ShellNode):
     vertexFormat = node.vertex_format
 
+
+  print(">>>Creating mesh for :", node.name, " of type {}".format(type(node)) )
   # Create the mesh
   mesh = _create_mesh(node.vertexData, node.indexData, vertexFormat)
   mesh.name = node.name
 
   # Create and link the object
   ob = bpy.data.objects.new(node.name, mesh)
-  ob.edm.is_collision_shell = isinstance(node, ShellNode)
-  ob.edm.is_renderable      = isinstance(node, RenderNode)
-  ob.edm.damage_argument = -1 if not isinstance(node, RenderNode) else node.damage_argument
+
+  print("<<<Creating mesh for :", node.name )
+
+  ob.edm.is_collision_shell = False
+  ob.edm.is_renderable = False
+  ob.edm.damage_argument = -1
+
+  if isinstance(node, ShellNode) :
+      ob.edm.is_collision_shell = True
+      ob.edm.damage_argument = node.damage_argument
+
+  if isinstance(node, RenderNode) or isinstance(node, SkinNode) :
+      ob.edm.is_renderable = True
+
+#  ob.edm.is_collision_shell = isinstance(node, ShellNode)
+#  ob.edm.is_renderable      = isinstance(node, RenderNode)
+#  ob.edm.damage_argument = -1 if not isinstance(node, RenderNode) else node.damage_argument
   bpy.context.collection.objects.link(ob)
 
   return ob
