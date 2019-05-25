@@ -569,6 +569,8 @@ of those settings; the observed values are:
 | ``transparent_self_illum_material`` | Transparent       | Used for e.g. indicator bulbs   |
 |                                     | Self-illuminated  |                                 |
 +-------------------------------------+-------------------+---------------------------------+
+| ``glass_instrumental_material``     |                   | Found in harrier                |
++-------------------------------------+-------------------+---------------------------------+
 
 Uniforms
 ~~~~~~~~
