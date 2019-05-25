@@ -144,7 +144,7 @@ def process_node(node):
     node.blender.parent = node.parent.blender
 
   # Apply any material
-  if hasattr(node.render, "material"):
+  if hasattr(node.render, "material") and node.render != None:
     node.blender.data.materials.append(node.render.material.blender_material)
 
   if node.transform:
