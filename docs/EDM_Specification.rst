@@ -290,7 +290,8 @@ placed immediately. The lookup is in a big block of character data,
 consisting of a number of **null-terminated** strings, one after
 another. Once split and decoded, this data forms the string lookup table
 described earlier in the definition for strings. This is then
-immediately used by the file indexes...
+immediately used by the file indexes... bug note, you can get zero
+length strings(AV8 Cockpit) so watch for null, null
 
 They translate as a lookup table of (almost entirely) typename-to-count
 values and seem to act as a crosscheck for the file. ``indexA`` seems to
