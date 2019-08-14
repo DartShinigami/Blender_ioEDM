@@ -34,12 +34,6 @@ class NodeCategory(Enum):
 class AnimatingNode(ABC):
   """Abstract base class for all nodes that animate the object"""
 
-
-# All possible entries for indexA and indexB
-_all_IndexA = {'model::TransformNode', 'model::FakeOmniLightsNode', 'model::SkinNode', 'model::Connector', 'model::ShellNode', 'model::SegmentsNode', 'model::FakeSpotLightsNode', 'model::BillboardNode', 'model::ArgAnimatedBone', 'model::RootNode', 'model::Node', 'model::ArgAnimationNode', 'model::LightNode', 'model::LodNode', 'model::Bone', 'model::RenderNode', 'model::ArgVisibilityNode'}
-_all_IndexB = {'model::Key<key::ROTATION>', 'model::Property<float>', 'model::ArgAnimationNode::Position', '__pointers', 'model::FakeOmniLight', 'model::Key<key::SCALE>', 'model::AnimatedProperty<osg::Vec3f>', 'model::Key<key::VEC3F>', 'model::Property<osg::Vec2f>', 'model::Property<osg::Vec3f>', 'model::ArgAnimationNode::Rotation', 'model::ArgVisibilityNode::Range', 'model::Key<key::POSITION>', 'model::AnimatedProperty<osg::Vec2f>', 'model::Key<key::FLOAT>', '__ci_bytes', '__gv_bytes', 'model::ArgVisibilityNode::Arg', 'model::AnimatedProperty<float>', 'model::RNControlNode', 'model::SegmentsNode::Segments', '__gi_bytes', '__cv_bytes', 'model::Property<unsigned int>', 'model::Key<key::VEC2F>', 'model::ArgAnimationNode::Scale', 'model::LodNode::Level', 'model::PropertiesSet', 'model::FakeSpotLight'}
-
-
 def get_type_reader(name):
   _readfun = _tr_get_type_reader(name)
   def _reader(reader):
@@ -81,7 +75,6 @@ def _write_index(writer, data):
   for key in keys:
     writer.write_string(key)
     writer.write_uint(data[key])
-
 
 def _read_main_object_dictionary(stream):
   count = stream.read_uint()
@@ -129,6 +122,7 @@ class EDMFile(object):
     # Read the two indexes
     self.indexA = _read_index(reader)
     self.indexB = _read_index(reader)
+    
     self.root = reader.read_named_type()
 
     self.nodes = reader.read_list(reader.read_named_type)
@@ -209,16 +203,14 @@ class EDMFile(object):
     return _index
 
   def write(self, writer):
-    # Generate the file index with an audit
-    _allIndex = self.audit()
-    indexA = {k: v for k, v in _allIndex.items() if k in _all_IndexA}
-    indexB = {k: v for k, v in _allIndex.items() if k in _all_IndexB}
 
-    # Do the writing
-    writer.write(b'EDM')
-    writer.write_ushort(8)
-    _write_index(writer, indexA)
-    _write_index(writer, indexB)
+    # Switch the writer into phase1 
+    # And start to write out the header
+    writer.phase1()
+
+    # indexA and indexB appear to have been dropped so just the stub is left
+    writer.write_uint(0)
+    writer.write_uint(0)
 
     # Write the Root node
     writer.write_named_type(self.root)
@@ -256,6 +248,15 @@ class EDMFile(object):
       writer.write_uint(len(nodes))
       for node in nodes:
         writer.write_named_type(node)
+
+    # switch the writer into phase2
+    writer.phase2()
+    writer.write(b'EDM')
+    writer.write_ushort(10)
+    writer.write_stringtable()
+    
+    # This does the creation of the edm file its self.
+    writer.finish()
 
 class GraphNode(object):
   def __init__(self):
@@ -303,7 +304,7 @@ class BaseNode(GraphNode):
     return c
 
   def write(self, writer):
-    writer.write_string(self.name)
+    writer.write_string(self.name,lookup=False)
     writer.write_uint(self.version)
     self.props.write(writer)
 
@@ -318,19 +319,25 @@ class RootNode(BaseNode):
   def __init__(self):
     super(RootNode, self).__init__()
     self.name = "Scene Root"
-    self.props["__VERSION__"] = 2
-    self.unknown_parts = []
+    self.props["__VERSION__"] = 3
+    self.unknownC = 0
+    self.maxArgPlusOne = 0
 
   @classmethod
   def read(cls, stream):
     self = super(RootNode, cls).read(stream)
-    self.unknownA = stream.read_uchar()
+
+    if self.props["__VERSION__"] == 2:
+      self.unknownA = stream.read_uchar()
+    
     self.boundingBoxMin = stream.read_vec3d()
     self.boundingBoxMax = stream.read_vec3d()
     self.unknownB = [stream.read_vec3d() for _ in range(4)]
     self.materials = stream.read_list(Material.read)
     stream.materials = self.materials
-    self.unknownD = stream.read_uints(2)
+    self.unknownC = stream.read_uint()
+    self.maxArgPlusOne = stream.read_uint()
+
     return self
 
   def audit(self):
@@ -342,7 +349,9 @@ class RootNode(BaseNode):
   def write(self, writer):
     super(RootNode, self).write(writer)
 
-    writer.write_uchar(0)
+    if self.props["__VERSION__"] == 2:
+      writer.write_uchar(0)
+    
     writer.write_vecd(self.boundingBoxMin)
     writer.write_vecd(self.boundingBoxMax)
     # Don't fully understand this bit; seems to sometimes be min, max again then high, low.
@@ -358,9 +367,11 @@ class RootNode(BaseNode):
     writer.write_uint(len(self.materials))
     for mat in self.materials:
       mat.write(writer)
-    writer.write_uint(0)
-    writer.write_uint(0)
-
+      
+    # unknown4
+    writer.write_uint(self.unknownC)
+    # maxArg + 1
+    writer.write_uint(self.maxArgPlusOne)
 
 @reads_type("model::Node")
 class Node(BaseNode):
