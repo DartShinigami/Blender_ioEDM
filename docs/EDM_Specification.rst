@@ -188,7 +188,7 @@ to be read, and the components are in this order:
 ::
 
     osg:Quaternion :=
-      float x, y, z, w;
+      double x, y, z, w;
 
 Properties
 ~~~~~~~~~~
@@ -290,7 +290,12 @@ placed immediately. The lookup is in a big block of character data,
 consisting of a number of **null-terminated** strings, one after
 another. Once split and decoded, this data forms the string lookup table
 described earlier in the definition for strings. This is then
-immediately used by the file indexes...
+immediately used by the file indexes... bug note, you can get zero
+length strings(AV8 Cockpit) so watch for null, null
+
+As of version 10 it would appear indexA and indexB have been retired as most 
+edm files have then as empty (e.g. length = 0).  Keeping the informatin for 
+the older version 8 format just incase.
 
 They translate as a lookup table of (almost entirely) typename-to-count
 values and seem to act as a crosscheck for the file. ``indexA`` seems to
@@ -568,6 +573,8 @@ of those settings; the observed values are:
 +-------------------------------------+-------------------+---------------------------------+
 | ``transparent_self_illum_material`` | Transparent       | Used for e.g. indicator bulbs   |
 |                                     | Self-illuminated  |                                 |
++-------------------------------------+-------------------+---------------------------------+
+| ``glass_instrumental_material``     |                   | Found in harrier                |
 +-------------------------------------+-------------------+---------------------------------+
 
 Uniforms
@@ -1150,9 +1157,10 @@ instead of parent transforms it explicitly lists a set of bones:
 
     model::SkinNode :=
       model::Node   base;
+      uint          unknownA
       uint          material;
       list<uint>    bones;
-      uint          unknown;
+      uint          unknownB;
 
       VERTEXDATA    vertexData;
       INDEXDATA     indexData;
