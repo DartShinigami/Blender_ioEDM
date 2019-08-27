@@ -12,6 +12,17 @@ from .utils import matrix_string, vector_string, print_edm_graph
 
 from .translation import TranslationGraph, TranslationNode
 
+# We need to find out the max argument number we write out
+the_max_argument_value_written = 0
+
+def max_argument_value_written():
+  global the_max_argument_value_written
+  return the_max_argument_value_written + 1
+
+def max_argument_value_written_reset():
+  global the_max_argument_value_written
+  the_max_argument_value_written = 0
+
 def get_all_actions(obj):
   """Retrieve all actions given a blender object. Includes NLA-actions"""
   if obj.animation_data:
@@ -35,6 +46,9 @@ def is_null_transform(obj):
 
 
 def convert_node(node):
+
+  print( "convert_node ", node.name )
+
   # Are we the root node?
   if node.parent is None:
     node.transform = Node()
@@ -49,7 +63,6 @@ def convert_node(node):
   if node.blender.type == "EMPTY" and node.blender.edm.is_connector:
     node.render = ConnectorWriter(node.blender)
 
-
   # Do we have animations? If so, we need to be turned into an animation node
   # Also: If we have children, then they need to be parented to the correct
   #       world position, so we need a transform
@@ -57,6 +70,9 @@ def convert_node(node):
   if any(True for _ in get_all_actions(node.blender)) or (node.children and not is_null_transform(node.blender)):
     node.transform = build_animation_node(node.blender)
   else:
+    # We have to have dud TransformNode
+    node.transform = TransformNode()
+    node.transform.matrix = Matrix()
     pass
 
   # IF a connector, then we need a Transform as the parent transform, so if it
@@ -109,6 +125,8 @@ def convert_node(node):
 
 def write_file(filename, options={}):
 
+  max_argument_value_written_reset()
+
   # Get a set of all objects to be exported as renderables
   allExport = _get_all_objects_to_export()  
   print("Writing {} objects".format(len(allExport)))
@@ -149,10 +167,15 @@ def write_file(filename, options={}):
   def _connect_parents(node):
     # Set the render node's parent - at most one level away
     if node.render and node.transform:
+    
       node.render.parent = node.transform
+    
     elif node.render and node.parent.transform:
+    
       node.render.parent = node.parent.transform
+    
     if node.transform and node.parent:
+    
       # Should never have a transform parented to anything else
       assert node.parent.transform
       node.transform.parent = node.parent.transform
@@ -205,11 +228,12 @@ def write_file(filename, options={}):
   print("Final EDM Graph for writing:")
   print_edm_graph(allNodes[NodeCategory.transform][0])
 
-
   # Let's build the root node
   root = RootNodeWriter()
   root.set_bounding_box_from(allExport)
   root.materials = materials
+  # set the max arg + 1 value on rootnode
+  root.maxArgPlusOne = max_argument_value_written()
   
   # And finally the wrapper
   file = EDMFile()
@@ -267,6 +291,8 @@ def _build_transform(node):
 
 def build_animation_node(obj):
   """Inspects an object's actions to build a parent transform node."""
+
+  print( "Calling build_animation_node",obj.name)
 
   actions = set(get_all_actions(obj))
   assert len(actions) <= 1, "Do not support multiple actions on object export at this time"
@@ -345,6 +371,8 @@ def create_animation_base(object):
   return node
 
 def create_arganimation_node(object, actions):
+  global the_max_argument_value_written
+
   # For now, let's assume single-action
   node = create_animation_base(object)
 
@@ -365,6 +393,10 @@ def create_arganimation_node(object, actions):
     rotCurves = [x for x in action.fcurves if x.data_path == "rotation_quaternion"]
     posCurves = [x for x in action.fcurves if x.data_path == "location"]
     argument = action.argument
+
+    # See if we have a new max arg value
+    if the_max_argument_value_written < argument :
+      the_max_argument_value_written = argument
 
     # What we should scale to - take the maximum keyframe value as '1.0'
     scale = 1.0 / (max(abs(x) for x in get_all_keyframe_times(posCurves + rotCurves)) or 100.0)
