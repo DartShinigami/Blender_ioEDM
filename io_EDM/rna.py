@@ -17,12 +17,14 @@ _edm_matTypes = (
   ("chrome_material", "chrome_material", "chrome_material"),
   ("color_material", "color_material", "color_material"),
   ("fake_omni_lights", "fake_omni_lights", "fake_omni_lights"),
+  ("fake_omni_lights2", "fake_omni_lights2", "fake_omni_lights2"),
   ("fake_spot_lights", "fake_spot_lights", "fake_spot_lights"),
+  ("fake_spot_lights2", "fake_spot_lights2", "fake_spot_lights2"),
   ("forest_material", "forest_material", "forest_material"),
   ("lines_material", "lines_material", "lines_material"),
   ("mirror_material", "mirror_material", "mirror_material"),
   ("fake_als_lights", "fake_als_lights", "fake_als_lights"),
-  ("glass_instrumental_material", "glass_instrumental_material", "glass_instrumental_material")
+  ("glass_instrumental_material", "glass_instrumental_material", "glass_instrumental_material"),
 )
 
 _edm_blendTypes = (
